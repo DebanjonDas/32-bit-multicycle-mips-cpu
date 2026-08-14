@@ -249,13 +249,13 @@ gtkwave mips_waveform.vcd
 
 ## RTL & Waveform Screenshots
 
-### Simulation Console Log
-
-![Simulation Console Log](./Simulation_console_log.png)
-
 ### GTKWave Waveform Trace
 
 ![GTKWave Waveform](./GTK_wave.png)
+
+### Simulation Console Log
+
+![Simulation Console Log](./Simulation_console_log.png)
 
 The GTKWave capture above shows a sequence of instructions moving through the FSM states (`FETCH → DECODE → EXECUTE/MEM_ADDR → WB`), with `PC`, `IR`, `ALUOut`, `MDR`, and register file signals updating each cycle.
 
