@@ -23,19 +23,35 @@ The design follows the standard Patterson & Hennessy multicycle MIPS architectur
 - **Controller** (`controller_fsm`) — a Moore-style FSM that generates all control signals (`PCWrite`, `IRWrite`, `RegWrite`, `MemRead`, `MemWrite`, `ALUSrcA/B`, `PCSource`, `RegDst`, `MemtoReg`, `ALUControl`, `IorD`) based on the current state, opcode, and funct field.
 
 ```
-                ┌─────────────────────┐
-                │   controller_fsm    │
-                │  (control signals)  │
-                └─────────┬───────────┘
-                          │ control signals
-                          ▼
-   clk/reset ──▶ ┌─────────────────────┐        mem_address
-                 │      datapath       │───────▶ mem_write_data
-                 │  (mips_core.dp)     │◀─────── mem_read_data
-                 └─────────────────────┘
+ mips_top
+┌───────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   mips_core (core)                                             │
+│  ┌───────────────────────────────────────────────────────┐    │
+│  │                                                         │    │
+│  │   controller_fsm (ctrl)                                 │    │
+│  │   opcode, funct, Zero ──▶ [FSM] ──▶ control signals ────┼──┐ │
+│  │                                                         │  │ │
+│  └─────────────────────────────────────────────────────────┘  │ │
+│                                                                 │ │
+│  ┌───────────────────────────────────────────────────────┐    │ │
+│  │   datapath (dp)                                        │◀───┘ │
+│  │   PC, IR, MDR, A/B regs, ALUOut, register_file, alu,    │      │
+│  │   sign_extend, shift_left_2                             │      │
+│  │                                                         │      │
+│  └───────────────────────────────────────────────────────┘      │
+│         │ mem_address, mem_write_data      ▲ mem_read_data       │
+│         ▼                                  │                     │
+└─────────┼──────────────────────────────────┼─────────────────────┘
+          │           MemRead, MemWrite      │
+          ▼                                  │
+      ┌───────────────────────────────────────────┐
+      │   memory (ram)                             │
+      │   256 x 32-bit unified instruction/data RAM │
+      └───────────────────────────────────────────┘
 ```
 
-`mips_core` wires the datapath and controller together, and `mips_top` connects `mips_core` to a unified `memory` module to form the complete system.
+`mips_core` wires the `datapath` and `controller_fsm` together internally. `mips_top` sits one level above and connects `mips_core` to the unified `memory` module via `mem_address`, `mem_write_data`, `mem_read_data`, `MemRead`, and `MemWrite` to form the complete system — matching the RTL schematic exported from synthesis.
 
 ### FSM States
 
@@ -61,8 +77,9 @@ The design follows the standard Patterson & Hennessy multicycle MIPS architectur
 ├── mips_core.v     # Datapath, controller FSM, ALU, register file, PC, and all core CPU modules
 ├── mips_top.v       # Top-level module: instantiates mips_core + unified memory
 └── docs/
-    ├── MIPS_CPU_Schematic.pdf   # Full RTL schematic (generated from synthesis)
-    └── waveform.png             # Simulation waveform showing instruction execution
+    ├── MIPS_CPU_Schematic_core.pdf   # RTL schematic of mips_core (datapath + controller)
+    ├── MIPS_CPU_Schematic_top.pdf    # RTL schematic of mips_top (core + memory)
+    └── waveform.png                  # GTKWave simulation waveform
 ```
 
 ## Getting Started
@@ -86,13 +103,15 @@ gtkwave dump.vcd
 
 ## Simulation Waveform
 
-The waveform below shows a sequence of instructions moving through the FSM states (`FETCH → DECODE → EXECUTE/MEM_ADDR → WB`), with `PC`, `IR`, `ALUOut`, `MDR`, and register file signals updating each cycle.
+The GTKWave capture below shows a sequence of instructions moving through the FSM states (`FETCH → DECODE → EXECUTE/MEM_ADDR → WB`), with `PC`, `IR`, `ALUOut`, `MDR`, and register file signals updating each cycle.
 
-![Waveform](docs/waveform.png)
+![GTKWave simulation waveform](docs/waveform.png)
 
 ## RTL Schematic
 
-A synthesized RTL schematic of the full design (datapath + controller + memory hierarchy) is available in [`docs/MIPS_CPU_Schematic.pdf`](docs/MIPS_CPU_Schematic.pdf).
+Synthesized RTL schematics of the design are available in `docs/`:
+- [`MIPS_CPU_Schematic_core.pdf`](docs/MIPS_CPU_Schematic_core.pdf) — internals of `mips_core` (datapath + controller FSM)
+- [`MIPS_CPU_Schematic_top.pdf`](docs/MIPS_CPU_Schematic_top.pdf) — top-level view (`mips_core` + `memory`)
 
 ## Design Notes / Limitations
 
@@ -108,12 +127,3 @@ A synthesized RTL schematic of the full design (datapath + controller + memory h
 - [ ] Parameterize memory size
 - [ ] Add exception handling (overflow, invalid opcode)
 - [ ] Convert to a pipelined 5-stage implementation for comparison
-
-## License
-
-This project is open-source and available under the [MIT License](LICENSE).
-
-## Author
-
-Built as an academic/portfolio project to demonstrate multicycle CPU design in Verilog, following the classic Hennessy & Patterson multicycle MIPS architecture.
-
