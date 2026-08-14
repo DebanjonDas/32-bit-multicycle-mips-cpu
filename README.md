@@ -155,6 +155,10 @@ Full synthesized schematics (higher resolution, per-module) are available as PDF
 
 ![Simulation Waveform](./Screenshot%202026-08-14%20112952.png)
 
+### Report utilization
+
+![Report utilaization](./Report_utilization.png)
+
 The GTKWave capture above shows a sequence of instructions moving through the FSM states (`FETCH → DECODE → EXECUTE/MEM_ADDR → WB`), with `PC`, `IR`, `ALUOut`, `MDR`, and register file signals updating each cycle.
 
 ## Design Notes / Limitations
