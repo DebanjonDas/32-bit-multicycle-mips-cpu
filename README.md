@@ -2,6 +2,17 @@
 
 A Verilog implementation of the classic **multicycle MIPS datapath and control unit**, built around a shared ALU and a finite state machine (FSM) controller. The design fetches, decodes, and executes instructions over multiple clock cycles per instruction (as opposed to a single-cycle or pipelined design), reusing hardware such as the ALU and memory across cycles.
 
+## Technical Specifications
+
+| | |
+|---|---|
+| Architecture | Multi-cycle (3–5 clock cycles per instruction) |
+| Data path width | 32-bit |
+| Memory | Unified 256 × 32-bit RAM (instructions + data), word-aligned addressing |
+| Register file | 32 × 32-bit GPRs, `$0` hardwired to 0, async dual-port read, sync write |
+| ALU operations | ADD, SUB, AND, OR, SLT |
+| Control unit | 12-state Moore FSM |
+
 ## Features
 
 - 32-bit datapath with a 32 x 32-bit register file (`$0`–`$31`, with `$0` hardwired to zero)
@@ -70,16 +81,45 @@ The design follows the standard Patterson & Hennessy multicycle MIPS architectur
 | `BRANCH` | Compare registers, conditionally update PC |
 | `JUMP` | Update PC with jump target |
 
+## Supported Instruction Set (ISA)
+
+| Instruction | Type | Opcode | Funct | Syntax | Operation |
+|---|---|---|---|---|---|
+| ADD | R | 0x00 | 0x20 | `add $rd, $rs, $rt` | `$rd = $rs + $rt` |
+| SUB | R | 0x00 | 0x22 | `sub $rd, $rs, $rt` | `$rd = $rs - $rt` |
+| AND | R | 0x00 | 0x24 | `and $rd, $rs, $rt` | `$rd = $rs & $rt` |
+| OR | R | 0x00 | 0x25 | `or $rd, $rs, $rt` | `$rd = $rs \| $rt` |
+| SLT | R | 0x00 | 0x2A | `slt $rd, $rs, $rt` | `$rd = ($rs < $rt) ? 1 : 0` |
+| LW | I | 0x23 | — | `lw $rt, imm($rs)` | `$rt = Mem[$rs + SignExt(imm)]` |
+| SW | I | 0x2B | — | `sw $rt, imm($rs)` | `Mem[$rs + SignExt(imm)] = $rt` |
+| ADDI | I | 0x08 | — | `addi $rt, $rs, imm` | `$rt = $rs + SignExt(imm)` |
+| BEQ | I | 0x04 | — | `beq $rs, $rt, offset` | `if ($rs == $rt) PC = BranchTarget` |
+| J | J | 0x02 | — | `j target` | `PC = JumpTarget` |
+
+## FSM State Flow
+
+```
+FETCH ──▶ DECODE ─┬─(R-type)──▶ EXECUTE ──▶ R_WB ─────┐
+                   ├─(lw/sw)──▶ MEM_ADDR ─┬─(lw)──▶ MEM_READ ──▶ MEM_WB ─┐
+                   │                      └─(sw)──▶ MEM_WRITE ──────────┤
+                   ├─(addi)───▶ ADDI_EXEC ──▶ ADDI_WB ───────────────────┤
+                   ├─(beq)────▶ BRANCH ─────────────────────────────────┤
+                   └─(j)──────▶ JUMP ────────────────────────────────────┤
+                                                                          ▼
+                                                                       FETCH
+```
+
 ## Repository Structure
 
 ```
 .
-├── mips_core.v     # Datapath, controller FSM, ALU, register file, PC, and all core CPU modules
-├── mips_top.v       # Top-level module: instantiates mips_core + unified memory
+├── mips_core.v                        # Datapath, controller FSM, ALU, register file, PC, and all core CPU modules
+├── mips_top.v                         # Top-level module: instantiates mips_core + unified memory
+├── Screenshot 2026-08-14 112727.png   # RTL schematic screenshot
+├── Screenshot 2026-08-14 112952.png   # GTKWave simulation waveform screenshot
 └── docs/
-    ├── MIPS_CPU_Schematic_core.pdf   # RTL schematic of mips_core (datapath + controller)
-    ├── MIPS_CPU_Schematic_top.pdf    # RTL schematic of mips_top (core + memory)
-    └── waveform.png                  # GTKWave simulation waveform
+    ├── MIPS_CPU_Schematic_core.pdf    # Full RTL schematic of mips_core (datapath + controller)
+    └── MIPS_CPU_Schematic_top.pdf     # Full RTL schematic of mips_top (core + memory)
 ```
 
 ## Getting Started
@@ -94,24 +134,28 @@ Any standard Verilog simulator, e.g.:
 ### Simulate with Icarus Verilog
 
 ```bash
-iverilog -o mips_sim mips_top.v mips_core.v testbench.v
+iverilog -o mips_sim mips_top.v mips_core.v tb_mips.v
 vvp mips_sim
-gtkwave dump.vcd
+gtkwave mips_waveform.vcd
 ```
 
-> Add your own `testbench.v` that instantiates `mips_top`, drives `clk`/`reset`, and preloads the `mem` array in `memory` with test instructions.
+> Add your own `tb_mips.v` testbench that instantiates `mips_top`, drives `clk`/`reset`, and preloads the `mem` array in `memory` with test instructions.
 
-## Simulation Waveform
+## RTL & Waveform Screenshots
 
-The GTKWave capture below shows a sequence of instructions moving through the FSM states (`FETCH → DECODE → EXECUTE/MEM_ADDR → WB`), with `PC`, `IR`, `ALUOut`, `MDR`, and register file signals updating each cycle.
+### RTL Schematic
 
-![GTKWave simulation waveform](docs/waveform.png)
+![RTL Schematic](./Screenshot%202026-08-14%20112727.png)
 
-## RTL Schematic
-
-Synthesized RTL schematics of the design are available in `docs/`:
+Full synthesized schematics (higher resolution, per-module) are available as PDFs:
 - [`MIPS_CPU_Schematic_core.pdf`](docs/MIPS_CPU_Schematic_core.pdf) — internals of `mips_core` (datapath + controller FSM)
 - [`MIPS_CPU_Schematic_top.pdf`](docs/MIPS_CPU_Schematic_top.pdf) — top-level view (`mips_core` + `memory`)
+
+### Simulation Waveform
+
+![Simulation Waveform](./Screenshot%202026-08-14%20112952.png)
+
+The GTKWave capture above shows a sequence of instructions moving through the FSM states (`FETCH → DECODE → EXECUTE/MEM_ADDR → WB`), with `PC`, `IR`, `ALUOut`, `MDR`, and register file signals updating each cycle.
 
 ## Design Notes / Limitations
 
