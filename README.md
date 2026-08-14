@@ -208,7 +208,7 @@ Any standard Verilog simulator, e.g.:
 
 ```bash
 # 1. Compile design and testbench
-iverilog -o mips_sim mips_top.v mips_core.v controller_fsm.v datapath.v register_file.v alu.v memory.v tb_mips.v
+iverilog -o mips_sim mips_top.v mips_core.v tb_mips.v
 
 # 2. Execute simulation
 vvp mips_sim
