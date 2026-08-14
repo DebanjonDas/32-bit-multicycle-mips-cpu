@@ -1,2 +1,2 @@
-# 32-bit-multicycle-mips-cpu
-Synthesizable 32-bit multi-cycle MIPS processor core in Verilog HDL featuring an FSM controller, unified memory architecture, and verified on Xilinx Artix-7 FPGA using Vivado.
+<img width="1595" height="847" alt="image" src="https://github.com/user-attachments/assets/2fb5b4e7-f666-4ee5-a4a4-094c97833c32" />
+
